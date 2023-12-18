@@ -1,0 +1,22 @@
+.inputs{
+  width: 300px;
+  height: 35px;
+  padding: 5px;
+  margin: 10px 0;
+}
+form{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  flex-direction: column;
+}
+.buttons{
+  width: 318px;
+  text-align: center;
+  color: white;
+  background-color: black;
+  height: 35px;
+  padding: 5px;
+  cursor: pointer;
+}
