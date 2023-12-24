@@ -26,15 +26,16 @@ const EditFactureForm = () => {
         axios.get(`http://localhost:8080/api/factures/${factureId}`)
             .then(response => {
                 setFacture(response.data);
+                console.log(response.data)
             })
             .catch(error => console.error('Error fetching facture details:', error))
             .finally(() => setLoading(false));
-
-        axios.get(`http://localhost:8080/api/DetailFactures?facture_id=${factureId}`)
+           
+            axios.get(`http://localhost:8080/api/DetailFactures`)
             .then(response => {
-                setFacture(prevFacture => ({ ...prevFacture, produits: response.data }));
-            })
-            .catch(error => console.error('Error fetching facture details:', error));
+             setFacture(prevFacture => ({ ...prevFacture, produits: response.data.filter(el=>el.facture.id==factureId)}))})
+            .catch(error => console.error('Error fetching details:', error));
+         
 
         // Fetching produits
         axios.get('http://localhost:8080/api/produits')
@@ -66,28 +67,93 @@ const EditFactureForm = () => {
     const handleAddProduct = () => {
         if (selectedProduit && quantite > 0) {
             const produitToAdd = produits.find(produit => produit.id.toString() === selectedProduit);
+
             if (produitToAdd) {
-                setFacture(prevFacture => ({
-                    ...prevFacture,
-                    produits: [...(prevFacture.produits || []), { produitName: produitToAdd.designation, prixUnitaire: produitToAdd.prix, quantite }],
-                    totale: prevFacture.totale + produitToAdd.prix * quantite,
-                }));
+                let factureDetails={
+                    quantite:quantite,
+                    prixUnitaire:produitToAdd.prix,
+                    facture:facture,
+                    produitName:produitToAdd.designation
+
+                }
+             axios.post("http://localhost:8080/api/DetailFactures",factureDetails).then(res=>console.log(res.data)).then(res=>
+             
+             {
+                let  newfacture={
+                    id:facture.id,
+                    dateF: facture.dateF,
+                    client: facture.client,
+                    totale: facture.totale+(produitToAdd.prix*quantite),
+              
+                }
+                axios.post(`http://localhost:8080/api/factures`,newfacture)
+                .then(
+                    res=>{
+                 
+                        axios.get(`http://localhost:8080/api/factures/${factureId}`)
+                        .then(response => {
+                            setFacture(response.data);
+                            console.log(response.data)
+                            axios.get(`http://localhost:8080/api/DetailFactures`)
+                            .then(response => {
+                             setFacture(prevFacture => ({ ...prevFacture, produits: response.data.filter(el=>el.facture.id==factureId)}))
+                            
+                            
+                            })
+                            .catch(error => console.error('Error fetching details:', error));
+                        })
+                        .catch(error => console.error('Error fetching facture details:', error))
+                                .finally(() => setLoading(false));
+            
+                      
+                    }
+                )
+             }
+             )
             }
         }
     };
 
-    const handleDeleteProduct = (index) => {
-        const updatedProduits = [...facture.produits];
-        const deletedProduct = updatedProduits.splice(index, 1)[0];
-        // Update the total in the facture table using reduce
-        const updatedTotal = updatedProduits.reduce((total, product) => {
-            return total + product.prixUnitaire * product.quantite;
-        }, 0);
-        setFacture(prevFacture => ({
-            ...prevFacture,
-            produits: updatedProduits,
-            totale: updatedTotal,
-        }));
+    const handleDeleteProduct = (item) => {
+      let x= window.confirm('Êtes-vous sûr de vouloir supprimer cet élément de la facture ?')
+if(x){
+    axios.delete('http://localhost:8080/api/DetailFactures/'+item.id).then(res=>
+ 
+  {
+    let  newfacture={
+        id:facture.id,
+        dateF: facture.dateF,
+        client: facture.client,
+        totale: facture.totale-(item.prixUnitaire*item.quantite),
+  
+    }
+    axios.post(`http://localhost:8080/api/factures`,newfacture)
+    .then(
+        res=>{
+     
+            axios.get(`http://localhost:8080/api/factures/${factureId}`)
+            .then(response => {
+                setFacture(response.data);
+                console.log(response.data)
+                axios.get(`http://localhost:8080/api/DetailFactures`)
+                .then(response => {
+                 setFacture(prevFacture => ({ ...prevFacture, produits: response.data.filter(el=>el.facture.id==factureId)}))
+                
+                
+                })
+                .catch(error => console.error('Error fetching details:', error));
+            })
+            .catch(error => console.error('Error fetching facture details:', error))
+                    .finally(() => setLoading(false));
+
+          
+        }
+    )
+   
+   
+}
+    )
+}
     };
 
     const handleSubmit = async (e) => {
@@ -110,27 +176,13 @@ const EditFactureForm = () => {
                     <div className="mb-3">
                         <label htmlFor="clientName" className="form-label">Client Name:</label>
                         <br/>
-                        <input type="text" id="clientName"  className='inputs' disabled value={facture.clientName} />
+                        <input type="text" id="clientName"  className='inputs' disabled value={facture.client} />
                     </div>
 
-                    <div className="mb-3">
-                        <label htmlFor="selectedProduit" className="form-label">Produits:</label>
-                        <br/>
-                        <select id="selectedProduit"  className='inputs' value={selectedProduit} onChange={handleProduitChange}>
-                            <option value="" disabled>Select a produit</option>
-                            {produits.map(produit => (
-                                <option key={produit.id} value={produit.id}>{produit.designation}</option>
-                            ))}
-                        </select>
-                    </div>
+                
+                 
 
-                    <div className="mb-3">
-                        <label htmlFor="quantite" className="form-label">Quantite:</label>
-                        <br/>
-                        <input type="number" id="quantite"  className='inputs' value={quantite} onChange={handleQuantiteChange} min="1" required />
-                    </div>
-
-                    <button type="button" className='buttons' onClick={handleAddProduct}>Add Produit</button>
+                 
 
                     <h3 className="mt-4">Facture Details:</h3>
                     <table className="table table-bordered" border={1} width={"300px"}>
@@ -150,12 +202,28 @@ const EditFactureForm = () => {
                                     <td>{item.quantite}</td>
                                     <td>{item.prixUnitaire}</td>
                                     <td>
-                                        <button type="button" className="btn btn-danger" onClick={() => handleDeleteProduct(index)}>Delete</button>
+                                        <button type="button" className="btn btn-danger" onClick={() => handleDeleteProduct(item)}>Delete</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+                    <div className="mb-3">
+                        <label htmlFor="selectedProduit" className="form-label">Ajouter Nouveau Produit</label>
+                        <br/>
+                        <select id="selectedProduit"  className='inputs' value={selectedProduit} onChange={handleProduitChange}>
+                            <option value="" disabled>Select a produit</option>
+                            {produits.map(produit => (
+                                <option key={produit.id} value={produit.id}>{produit.designation}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="quantite" className="form-label">Quantite:</label>
+                        <br/>
+                        <input type="number" id="quantite"  className='inputs' value={quantite} onChange={handleQuantiteChange} min="1" required />
+                    </div>
+                    <button type="button" className='buttons' onClick={handleAddProduct}>Ajouter Nouveau Produit</button>
 
                     <p>Total: {facture.totale}</p>
 

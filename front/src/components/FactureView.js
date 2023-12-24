@@ -19,7 +19,7 @@ const FactureView = () => {
 
     axios.get(`http://localhost:8080/api/DetailFactures`)
       .then(response => {
-        console.log(response.data.facture);setDetails(response.data.filter(el=>el.facture.id===factureId))})
+        console.log(response.data.filter(el=>el.facture.id==factureId));setDetails(response.data.filter(el=>el.facture.id==factureId))})
       .catch(error => console.error('Error fetching details:', error));
   }, [factureId]);
 
